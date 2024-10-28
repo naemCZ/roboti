@@ -1,0 +1,115 @@
+#define SPEED_OFFSET 62       //62
+#define Kp 5.3                  //5.3
+#define Kd 50                 //50
+#define BOOST 1.5
+#define BOOST_MARGIN 25
+
+task main() {
+    SetSensorLight(IN_3);
+    SetSensorTouch(IN_1);
+//02    SetSensorMode(IN_3, IN_MODE_RAW);// prepnutí módu na rozlišení 0 až 1023
+
+    int Midpoint;
+    // promenná pro uložení hodnoty svetla
+    int Touch = 0;//touch sensor value
+    int measuredBlack;
+    int measuredWhite;
+    int currentError = 0;
+    int previousError = 0;
+    int currentLightValue;
+    int difference;
+    int turn;
+    int leftPower;
+    int rightPower;
+    int overflow=0;
+    
+    /*
+    while(Touch == 0){//wait until button IN_1 pressed
+          Touch = Sensor(IN_1);
+    }
+    measuredWhite = Sensor(IN_3);
+    
+    Wait(1000);
+    Touch = 0;
+
+    while(Touch == 0){//wait until button IN_1 pressed
+          Touch = Sensor(IN_1);
+    }
+    measuredBlack = Sensor(IN_3);
+      */
+    while(Touch == 0){//wait until button IN_1 pressed
+          Touch = Sensor(IN_1);
+    }
+    measuredBlack = Sensor(IN_3);
+    
+    OnRev(OUT_B, 23);
+    OnFwd(OUT_C, 23);
+    
+    Wait(2000);
+    
+    measuredWhite = Sensor(IN_3);
+    
+    OnFwd(OUT_B, 23);
+    OnRev(OUT_C, 23);
+
+    Wait(2000);
+    
+
+    Midpoint = (measuredWhite + measuredBlack) / 2 + 3;
+    
+    while(true)
+    {
+       currentLightValue = Sensor(IN_3);
+       currentError = currentLightValue - Midpoint;
+       difference = currentError - previousError;
+       //turn = Kp * currentError;
+       turn = (Kp * currentError) +(Kd * difference);
+       leftPower = SPEED_OFFSET - turn;
+       rightPower = SPEED_OFFSET + turn;
+       if (leftPower > 100){
+          overflow = leftPower-100;
+          leftPower = 100;
+          rightPower += overflow;
+       }else{
+          if (rightPower>100){
+             overflow = rightPower - 100;
+             rightPower = 100;
+             leftPower += overflow;
+          }
+       }
+       
+       if (abs(rightPower - leftPower) < BOOST_MARGIN){
+            rightPower *= BOOST;
+            leftPower *= BOOST;
+       }
+       
+       ClearScreen();
+       
+       TextOut(10, LCD_LINE1, "white: " + NumToStr(measuredWhite), false);
+       TextOut(10, LCD_LINE2, "black: " + NumToStr(measuredBlack), false);
+       TextOut(10, LCD_LINE3, "mid: " + NumToStr(Midpoint), false);
+       TextOut(10, LCD_LINE4, "current: " + NumToStr( currentLightValue), false);
+       TextOut(10, LCD_LINE5, "left: " + NumToStr(leftPower), false);
+       TextOut(10, LCD_LINE6, "right: " + NumToStr(rightPower), false);
+       TextOut(10, LCD_LINE7, "error: " + NumToStr(currentError), false);
+       
+       OnFwd(OUT_B, rightPower);
+       OnFwd(OUT_C, leftPower);
+       
+       
+
+
+/*
+       if(Sensor(IN_3) < Midpoint){
+          OnFwd(OUT_C, SPEED);//turn right
+          Off(OUT_B);
+       }else{
+          OnFwd(OUT_B, SPEED);//turn left
+          Off(OUT_C);
+       }
+*/
+       
+       previousError = currentError;
+       Wait(5);
+    }//loop end
+}
