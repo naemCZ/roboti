@@ -1,0 +1,176 @@
+#define SPEED_OFFSET 62       //62
+#define Kp 5.3                  //5.3
+#define Kd 50                 //50
+#define BOOST 1.5
+#define BOOST_MARGIN 25
+
+int distanceSensorValue = 255;//0-255
+
+task readUltrasonic(){
+  while (true){
+    distanceSensorValue = distanceSensorValue = SensorUS(IN_4);
+    Wait(200);
+  }
+}
+
+
+task main() {
+    SetSensorLight(IN_3);
+    SetSensorTouch(IN_1);
+    SetSensorLowspeed(IN_4);
+   // SetSensorUltrasonic(IN_4);
+    
+//02    SetSensorMode(IN_3, IN_MODE_RAW);// prepnutí módu na rozlišení 0 až 1023
+
+    int Midpoint;
+    // promenná pro uložení hodnoty svetla
+    int Touch = 0;//touch sensor value
+    int measuredBlack;
+    int measuredWhite;
+    int currentError = 0;
+    int previousError = 0;
+    int currentLightValue;
+    int difference;
+    int turn;
+    int leftPower;
+    int rightPower;
+    int overflow=0;
+
+    bool bottle = false;
+    
+
+    while(Touch == 0){//wait until button IN_1 pressed
+          Touch = Sensor(IN_1);
+    }
+    measuredBlack = Sensor(IN_3);
+    
+    OnRev(OUT_B, 23);
+    OnFwd(OUT_C, 23);
+    
+    Wait(2000);
+    
+    measuredWhite = Sensor(IN_3);
+    Midpoint = (measuredWhite + measuredBlack) / 2 + 3;
+    
+    OnFwd(OUT_B, 23);
+    OnRev(OUT_C, 23);
+    currentLightValue = Sensor(IN_3);
+    while (currentLightValue > Midpoint){
+           currentLightValue = Sensor(IN_3);
+           Wait(5);
+    }
+
+    //Wait(2000);
+    
+
+
+    
+    StartTask(readUltrasonic);
+    
+    while(true)
+    {
+
+       currentLightValue = Sensor(IN_3);
+       currentError = currentLightValue - Midpoint;
+       difference = currentError - previousError;
+       //turn = Kp * currentError;
+       turn = (Kp * currentError) +(Kd * difference);
+       leftPower = SPEED_OFFSET - turn;
+       rightPower = SPEED_OFFSET + turn;
+       if (leftPower > 100){
+          overflow = leftPower-100;
+          leftPower = 100;
+          rightPower += overflow;
+       }else{
+          if (rightPower>100){
+             overflow = rightPower - 100;
+             rightPower = 100;
+             leftPower += overflow;
+          }
+       }
+       
+       if (abs(rightPower - leftPower) < BOOST_MARGIN){
+            rightPower *= BOOST;
+            leftPower *= BOOST;
+       }
+       
+       ClearScreen();
+       
+       TextOut(10, LCD_LINE1, "white: " + NumToStr(measuredWhite), false);
+       TextOut(10, LCD_LINE2, "black: " + NumToStr(measuredBlack), false);
+       TextOut(10, LCD_LINE3, "mid: " + NumToStr(Midpoint), false);
+       TextOut(10, LCD_LINE4, "current: " + NumToStr( currentLightValue), false);
+       TextOut(10, LCD_LINE5, "left: " + NumToStr(leftPower), false);
+       TextOut(10, LCD_LINE6, "right: " + NumToStr(rightPower), false);
+       TextOut(10, LCD_LINE7, "error: " + NumToStr(currentError), false);
+       TextOut(10, LCD_LINE8, "distance: " + NumToStr(distanceSensorValue), false);
+       
+       if ((distanceSensorValue <= 20) && (distanceSensorValue > 1) && !bottle)
+       {
+         /*OnFwd(OUT_B, 0);
+         OnFwd(OUT_C, 0);
+         Wait(500);
+
+         OnRev(OUT_B, 46);
+         OnFwd(OUT_C, 46);
+         Wait(500);
+         
+         OnFwd(OUT_B, 80);
+         OnFwd(OUT_C, 80);
+         Wait(500);
+
+         OnFwd(OUT_B, 46);
+         OnRev(OUT_C, 46);
+         Wait(500);
+
+
+
+         OnFwd(OUT_B, 46);
+         OnRev(OUT_C, 46);
+         Wait(750);
+
+         currentLightValue = Sensor(IN_3);
+         OnFwd(OUT_B, 40);
+         OnFwd(OUT_C, 40);
+           */
+           
+         OnFwd(OUT_B, 0);
+         OnFwd(OUT_C, 0);
+         Wait(500);
+         
+         OnRev(OUT_B, 46);
+         OnFwd(OUT_C, 46);
+         Wait(500);
+         
+      //    OnFwd(OUT_B, 0);
+      //   OnFwd(OUT_C, 0);
+      //   Wait(2000);
+         
+         OnFwd(OUT_B, 60);
+         OnFwd(OUT_C, 45);
+
+         currentLightValue = Sensor(IN_3);
+           
+         while (currentLightValue > Midpoint){
+           currentLightValue = Sensor(IN_3);
+           Wait(5);
+         }
+
+         OnRev(OUT_B, 23);
+         OnFwd(OUT_C, 23);
+         Wait(1000);
+
+
+         bottle = true;
+              
+       }
+
+       OnFwd(OUT_B, rightPower);
+       OnFwd(OUT_C, leftPower);
+       
+
+       
+       previousError = currentError;
+       Wait(5);
+    }//loop end
+}
