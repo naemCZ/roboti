@@ -1,0 +1,75 @@
+#define SPEED_OFFSET 62;
+
+int distanceSensorValue = 255;
+
+
+
+task readUltrasonic(){
+  while (true){
+    distanceSensorValue = distanceSensorValue = SensorUS(IN_4);
+    Wait(200);
+  }
+}
+
+
+
+
+task main()
+{
+    SetSensorLowspeed(IN_4);
+    SetSensorTouch(IN_1);
+    while(true)
+    {
+        if(Sensor(IN_1) == 1)
+        {
+            Wait(2000);
+            break;
+        }
+    }
+    StartTask(readUltrasonic);
+    while(true)
+    {
+            ClearScreen();
+            TextOut(0, LCD_LINE3,"distance: " + NumToStr(distanceSensorValue));
+            if (Sensor(IN_1) == 1)
+            {
+                 OnFwd(OUT_C, 0);
+                 OnFwd(OUT_B, 0);
+                 Wait(50);
+
+                 OnRev(OUT_C, 46);
+                 OnRev(OUT_B, 46);
+                 Wait(500);
+
+            
+                 OnRev(OUT_C, 46);
+                 OnFwd(OUT_B, 46);
+                 Wait(500);
+                 OnFwd(OUT_B, 0);
+                 OnFwd(OUT_C, 0);
+            }else if (distanceSensorValue > 10 && distanceSensorValue < 50){
+                 OnRev(OUT_B, 46);
+                 OnFwd(OUT_C, 46);
+                 Wait(3000);
+                 OnFwd(OUT_B, 0);
+                 OnFwd(OUT_C, 0);
+            }
+            else
+            {
+                 OnFwd(OUT_B, 46);
+                 OnFwd(OUT_C, 46);
+            }
+
+    }
+
+
+
+
+
+
+
+
+}
+
+
+
