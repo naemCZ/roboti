@@ -1,36 +1,54 @@
-#define SPEED_OFFSET 62;
+#define SPEED_OFFSET 40;
+#define Kp 1.2;                  //5.3
+
 
 int distanceSensorValue = 255;
-
+int tempValue = 0;
 
 
 task readUltrasonic(){
   while (true){
-    distanceSensorValue = distanceSensorValue = SensorUS(IN_4);
+     tempValue = SensorUS(IN_4);
+    if ( tempValue > 30){
+       distanceSensorValue = 30;
+    }else{
+      distanceSensorValue = tempValue;
+    }
     Wait(200);
   }
 }
 
 
-
-
 task main()
 {
+    int currentError = 0;
+    int desiredWallDistance = 0;
     SetSensorLowspeed(IN_4);
     SetSensorTouch(IN_1);
+    StartTask(readUltrasonic);
+    
+    int turn = 0;
+    int leftPower;
+    int rightPower;
+    int overflow=0;
+    
     while(true)
     {
         if(Sensor(IN_1) == 1)
         {
-            Wait(2000);
+            desiredWallDistance = distanceSensorValue;
+            Wait(1000);
             break;
         }
     }
-    StartTask(readUltrasonic);
+  //  Wait(1000);
+    
     while(true)
     {
             ClearScreen();
             TextOut(0, LCD_LINE3,"distance: " + NumToStr(distanceSensorValue));
+            TextOut(0, LCD_LINE5,"default: " + NumToStr(desiredWallDistance));
+
             if (Sensor(IN_1) == 1)
             {
                  OnFwd(OUT_C, 0);
@@ -44,21 +62,59 @@ task main()
             
                  OnRev(OUT_C, 46);
                  OnFwd(OUT_B, 46);
-                 Wait(500);
+                 Wait(750);
                  OnFwd(OUT_B, 0);
                  OnFwd(OUT_C, 0);
-            }else if (distanceSensorValue > 10 && distanceSensorValue < 50){
+                 Wait(500);
+            }/*else if (distanceSensorValue > 10 && distanceSensorValue < 50){
                  OnRev(OUT_B, 46);
                  OnFwd(OUT_C, 46);
                  Wait(3000);
                  OnFwd(OUT_B, 0);
                  OnFwd(OUT_C, 0);
+            }*/
+            else if (distanceSensorValue >= 30){
+                 OnFwd(OUT_B, 46);
+                 OnFwd(OUT_C, 46);
+                 Wait(1000);
+                 
+                 OnFwd(OUT_C, 46);
+                 OnRev(OUT_B, 46);
+                 Wait(750);
+
             }
             else
             {
-                 OnFwd(OUT_B, 46);
-                 OnFwd(OUT_C, 46);
+             currentError = distanceSensorValue - desiredWallDistance;
+             turn = Kp;
+             turn *= currentError;
+             TextOut(0, LCD_LINE4,"turn: " + NumToStr(turn));
+             leftPower = turn;
+             leftPower += SPEED_OFFSET;
+             rightPower = - turn;
+             rightPower += SPEED_OFFSET;
+
+             if (leftPower > 100){
+               overflow = leftPower-100;
+               leftPower = 100;
+               rightPower += overflow;
+             }else{
+               if (rightPower>100){
+                overflow = rightPower - 100;
+                rightPower = 100;
+                leftPower += overflow;
+               }
+             }
+             
+              TextOut(10, LCD_LINE1, "left: " + NumToStr(leftPower));
+              TextOut(10, LCD_LINE2, "right: " + NumToStr(rightPower));
+
+
+             OnFwd(OUT_C, leftPower);
+             OnFwd(OUT_B, rightPower);
+
             }
+            
 
     }
 
