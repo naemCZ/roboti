@@ -1,6 +1,6 @@
-#define SPEED_OFFSET 40;
-#define Kp 1.2;                  //5.3
-
+#define SPEED_OFFSET 50 //70
+#define Kp 2.5                  //2.5, 3.8
+#define Kd 30
 
 int distanceSensorValue = 255;
 int tempValue = 0;
@@ -14,6 +14,7 @@ task readUltrasonic(){
     }else{
       distanceSensorValue = tempValue;
     }
+    //distanceSensorValue = tempValue;
     Wait(200);
   }
 }
@@ -22,6 +23,10 @@ task readUltrasonic(){
 task main()
 {
     int currentError = 0;
+    int previousError = 0;
+    int difference = 0;
+    int der_temp = 0;
+    
     int desiredWallDistance = 0;
     SetSensorLowspeed(IN_4);
     SetSensorTouch(IN_1);
@@ -37,6 +42,7 @@ task main()
         if(Sensor(IN_1) == 1)
         {
             desiredWallDistance = distanceSensorValue;
+            //desiredWallDistance = 10;
             Wait(1000);
             break;
         }
@@ -49,23 +55,26 @@ task main()
             TextOut(0, LCD_LINE3,"distance: " + NumToStr(distanceSensorValue));
             TextOut(0, LCD_LINE5,"default: " + NumToStr(desiredWallDistance));
 
-            if (Sensor(IN_1) == 1)
+            if (Sensor(IN_1) == 1)//wall hit
             {
+                 //stop
                  OnFwd(OUT_C, 0);
                  OnFwd(OUT_B, 0);
                  Wait(50);
 
-                 OnRev(OUT_C, 46);
-                 OnRev(OUT_B, 46);
-                 Wait(500);
+                 //back up
+                 OnRev(OUT_C, SPEED_OFFSET);
+                 OnRev(OUT_B, SPEED_OFFSET);
+                 Wait(650);
 
-            
-                 OnRev(OUT_C, 46);
-                 OnFwd(OUT_B, 46);
-                 Wait(750);
+                 //turn left
+                 OnRev(OUT_C, 60);
+                 OnFwd(OUT_B, 60);
+                 Wait(900);
+                 
                  OnFwd(OUT_B, 0);
                  OnFwd(OUT_C, 0);
-                 Wait(500);
+                 Wait(400);
             }/*else if (distanceSensorValue > 10 && distanceSensorValue < 50){
                  OnRev(OUT_B, 46);
                  OnFwd(OUT_C, 46);
@@ -73,33 +82,43 @@ task main()
                  OnFwd(OUT_B, 0);
                  OnFwd(OUT_C, 0);
             }*/
-            else if (distanceSensorValue >= 30){
-                 OnFwd(OUT_B, 46);
-                 OnFwd(OUT_C, 46);
-                 Wait(1000);
+            else if (distanceSensorValue >= 30){//wall end
+                 //stop
+                 OnFwd(OUT_C, 0);
+                 OnFwd(OUT_B, 0);
+                 //Wait(3000);
+
+                 //go forward
+                 OnFwd(OUT_B, SPEED_OFFSET);
+                 OnFwd(OUT_C, SPEED_OFFSET);
+                 Wait(600);
                  
-                 OnFwd(OUT_C, 46);
-                 OnRev(OUT_B, 46);
-                 Wait(750);
+                 //turn right
+                 OnFwd(OUT_C, 60);
+                 OnRev(OUT_B, 60);
+                 Wait(900);
+                 
+                 OnFwd(OUT_B, SPEED_OFFSET);
+                 OnFwd(OUT_C, SPEED_OFFSET);
+                 Wait(400);
 
             }
             else
             {
              currentError = distanceSensorValue - desiredWallDistance;
-             turn = Kp;
-             turn *= currentError;
+             difference = currentError - previousError;
+             turn = (Kp * currentError) + (Kd * difference);
+             
              TextOut(0, LCD_LINE4,"turn: " + NumToStr(turn));
-             leftPower = turn;
-             leftPower += SPEED_OFFSET;
-             rightPower = - turn;
-             rightPower += SPEED_OFFSET;
+             leftPower = SPEED_OFFSET + turn;
+             rightPower = SPEED_OFFSET -turn;
 
              if (leftPower > 100){
-               overflow = leftPower-100;
+               overflow = leftPower -100;
                leftPower = 100;
                rightPower += overflow;
              }else{
-               if (rightPower>100){
+               if (rightPower > 100){
                 overflow = rightPower - 100;
                 rightPower = 100;
                 leftPower += overflow;
@@ -112,18 +131,11 @@ task main()
 
              OnFwd(OUT_C, leftPower);
              OnFwd(OUT_B, rightPower);
-
+             previousError = currentError;
             }
             
 
     }
-
-
-
-
-
-
-
 
 }
 
